@@ -16,7 +16,7 @@ FROM fedora:35 as resume-api-fileset
 LABEL maintainer="orpiske@apache.org"
 
 RUN dnf install -y java-11-openjdk-headless tree pv && dnf clean all
-COPY target/resume-api-*.jar /deployments/example.jar
+COPY target/resume-api-*with-dependencies.jar /deployments/example.jar
 COPY src/main/scripts/run.sh /deployments/run.sh
 
 ENV JAVA_HOME /etc/alternatives/jre

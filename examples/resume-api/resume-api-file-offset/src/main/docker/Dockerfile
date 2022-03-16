@@ -23,7 +23,7 @@ ENV DEPLOYMENT_DIR /deployments
 RUN dnf install -y java-11-openjdk-headless tree && dnf clean all
 ENV JAVA_HOME /etc/alternatives/jre
 
-COPY target/resume-api-*.jar ${DEPLOYMENT_DIR}/example.jar
+COPY target/resume-api-*with-dependencies.jar ${DEPLOYMENT_DIR}/example.jar
 COPY src/main/scripts/run.sh ${DEPLOYMENT_DIR}/run.sh
 
 RUN mkdir -p ${DATA_DIR} && \
