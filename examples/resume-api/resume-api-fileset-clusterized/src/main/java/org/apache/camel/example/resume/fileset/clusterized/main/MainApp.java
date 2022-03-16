@@ -15,19 +15,24 @@
  * limitations under the License.
  */
 
-package org.apache.camel.example.resume.fileset.main;
+package org.apache.camel.example.resume.fileset.clusterized.main;
 
 import java.io.File;
 
+import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.component.zookeeper.cluster.ZooKeeperClusterService;
 import org.apache.camel.example.resume.clients.kafka.DefaultConsumerPropertyFactory;
 import org.apache.camel.example.resume.clients.kafka.DefaultProducerPropertyFactory;
 import org.apache.camel.example.resume.clients.kafka.FileDeserializer;
 import org.apache.camel.example.resume.clients.kafka.FileSerializer;
+import org.apache.camel.example.resume.fileset.clusterized.strategies.ClusterizedLargeDirectoryRouteBuilder;
 import org.apache.camel.example.resume.fileset.strategies.KafkaFileSetResumeStrategy;
-import org.apache.camel.example.resume.fileset.strategies.LargeDirectoryRouteBuilder;
 import org.apache.camel.example.resume.fileset.strategies.MultiItemCache;
+import org.apache.camel.impl.DefaultCamelContext;
+import org.apache.camel.main.BaseMainSupport;
 import org.apache.camel.main.Main;
+import org.apache.camel.main.MainListener;
 
 /**
  * A Camel Application
@@ -40,10 +45,69 @@ public class MainApp {
     public static void main(String... args) throws Exception {
         Main main = new Main();
 
+        ZooKeeperClusterService clusterService = new ZooKeeperClusterService();
+
+        String nodeId = System.getProperty("resume.example.node.id");
+        String nodeHost = System.getProperty("resume.example.zk.host");
+
+        clusterService.setNamespace("");
+        clusterService.setId(nodeId);
+        clusterService.setNodes(nodeHost);
+        clusterService.setBasePath("/camel/cluster");
+
+        main.addMainListener(new MainListener() {
+            @Override
+            public void beforeInitialize(BaseMainSupport main) {
+                try {
+                    clusterService.start();
+                    main.getCamelContext().addService(clusterService);
+                } catch (Exception e) {
+                    System.out.println("Unable to add the cluster service");
+                    System.exit(1);
+                }
+            }
+
+            @Override
+            public void beforeConfigure(BaseMainSupport main) {
+
+            }
+
+            @Override
+            public void afterConfigure(BaseMainSupport main) {
+
+            }
+
+            @Override
+            public void configure(CamelContext context) {
+
+            }
+
+            @Override
+            public void beforeStart(BaseMainSupport main) {
+
+            }
+
+            @Override
+            public void afterStart(BaseMainSupport main) {
+
+            }
+
+            @Override
+            public void beforeStop(BaseMainSupport main) {
+
+            }
+
+            @Override
+            public void afterStop(BaseMainSupport main) {
+
+            }
+        });
+
         KafkaFileSetResumeStrategy resumeStrategy = getUpdatableConsumerResumeStrategyForSet();
-        RouteBuilder routeBuilder = new LargeDirectoryRouteBuilder(resumeStrategy);
+        RouteBuilder routeBuilder = new ClusterizedLargeDirectoryRouteBuilder(resumeStrategy);
 
         main.configure().addRoutesBuilder(routeBuilder);
+
         main.run(args);
     }
 
@@ -56,6 +120,7 @@ public class MainApp {
         consumerPropertyFactory.setKeyDeserializer(FileDeserializer.class.getName());
         consumerPropertyFactory.setValueDeserializer(FileDeserializer.class.getName());
         consumerPropertyFactory.setOffsetReset("earliest");
+        consumerPropertyFactory.setGroupId("resume-cluster");
 
         final DefaultProducerPropertyFactory producerPropertyFactory = new DefaultProducerPropertyFactory(bootStrapAddress);
 

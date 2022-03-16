@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.camel.example.resume.fileset.strategies;
+package org.apache.camel.example.resume.fileset.clusterized.strategies;
 
 import java.io.File;
 
@@ -24,14 +24,15 @@ import org.apache.camel.Resumable;
 import org.apache.camel.UpdatableConsumerResumeStrategy;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.resume.Resumables;
+import org.apache.camel.component.zookeeper.cluster.ZooKeeperClusterService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class LargeDirectoryRouteBuilder extends RouteBuilder {
-    private static final Logger LOG = LoggerFactory.getLogger(LargeDirectoryRouteBuilder.class);
+public class ClusterizedLargeDirectoryRouteBuilder extends RouteBuilder {
+    private static final Logger LOG = LoggerFactory.getLogger(ClusterizedLargeDirectoryRouteBuilder.class);
     private UpdatableConsumerResumeStrategy<File, File, Resumable<File, File>> testResumeStrategy;
 
-    public LargeDirectoryRouteBuilder(UpdatableConsumerResumeStrategy resumeStrategy) {
+    public ClusterizedLargeDirectoryRouteBuilder(UpdatableConsumerResumeStrategy resumeStrategy) {
         this.testResumeStrategy = resumeStrategy;
     }
 
@@ -47,11 +48,18 @@ public class LargeDirectoryRouteBuilder extends RouteBuilder {
     /**
      * Let's configure the Camel routing rules using Java code...
      */
-    public void configure() {
+    public void configure() throws Exception {
+
+
+        from("timer:heartbeat?period=10000")
+                .routeId("heartbeat")
+                .log("HeartBeat route (timer) ...");
+
         getCamelContext().getRegistry().bind("testResumeStrategy", testResumeStrategy);
 
-        from("file:{{input.dir}}?noop=true&recursive=true")
+        from("master:resume-ns:file:{{input.dir}}?noop=true&recursive=true")
                 .resumable("testResumeStrategy")
+                .routeId("clustered")
                 .process(this::process)
                 .to("file:{{output.dir}}");
     }

@@ -14,11 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-echo "The test will process the following directory tree:"
 
-sleep 2s
-tree ${DATA_DIR} | pv -q -L 512
-sleep 8s
+if [[ ${NODE_ID} == "camel-1" ]] ; then
+  echo "Primary node"
+else
+  echo "Secondary node waiting"
+fi
+sleep 10s
 
 ITERATIONS=${1:-5}
 BATCH_SIZE=${2:-50}
@@ -32,6 +34,8 @@ for i in $(seq 0 ${ITERATIONS}) ; do
     -Dresume.type=kafka \
     -Dresume.type.kafka.topic=dir-offsets \
     -Dbootstrap.address=kafka:9092 \
+    -Dresume.example.node.id=${NODE_ID} \
+    -Dresume.example.zk.host=${NODE_HOST} \
     -jar /deployments/example.jar \
     -dm ${BATCH_SIZE}
     echo "********************************************************************************"
