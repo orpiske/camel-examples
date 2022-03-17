@@ -26,18 +26,21 @@ import org.apache.camel.example.resume.clients.kafka.DefaultConsumerPropertyFact
 import org.apache.camel.example.resume.clients.kafka.DefaultProducerPropertyFactory;
 import org.apache.camel.example.resume.clients.kafka.FileDeserializer;
 import org.apache.camel.example.resume.clients.kafka.FileSerializer;
+import org.apache.camel.example.resume.fileset.clusterized.strategies.ClusterAwareKafkaFileSetResumeStrategy;
 import org.apache.camel.example.resume.fileset.clusterized.strategies.ClusterizedLargeDirectoryRouteBuilder;
 import org.apache.camel.example.resume.fileset.strategies.KafkaFileSetResumeStrategy;
 import org.apache.camel.example.resume.fileset.strategies.MultiItemCache;
-import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.main.BaseMainSupport;
 import org.apache.camel.main.Main;
 import org.apache.camel.main.MainListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A Camel Application
  */
 public class MainApp {
+    private static final Logger LOG = LoggerFactory.getLogger(MainApp.class);
 
     /**
      * A main() so we can easily run these routing rules in our IDE
@@ -50,7 +53,6 @@ public class MainApp {
         String nodeId = System.getProperty("resume.example.node.id");
         String nodeHost = System.getProperty("resume.example.zk.host");
 
-        clusterService.setNamespace("");
         clusterService.setId(nodeId);
         clusterService.setNodes(nodeHost);
         clusterService.setBasePath("/camel/cluster");
@@ -58,38 +60,41 @@ public class MainApp {
         main.addMainListener(new MainListener() {
             @Override
             public void beforeInitialize(BaseMainSupport main) {
+                LOG.info("Before initialize");
+            }
+
+            @Override
+            public void beforeConfigure(BaseMainSupport main) {
+                LOG.info("Before configure");
                 try {
+                    LOG.info("Starting the cluster service");
                     clusterService.start();
                     main.getCamelContext().addService(clusterService);
+
+                    ClusterAwareKafkaFileSetResumeStrategy resumeStrategy = getUpdatableConsumerResumeStrategyForSet(clusterService, "resume-ns");
+                    RouteBuilder routeBuilder = new ClusterizedLargeDirectoryRouteBuilder(resumeStrategy);
+
+                    main.configure().addRoutesBuilder(routeBuilder);
                 } catch (Exception e) {
-                    System.out.println("Unable to add the cluster service");
+                    LOG.error("Unable to add the cluster service: {}", e.getMessage(), e);
                     System.exit(1);
                 }
             }
 
             @Override
-            public void beforeConfigure(BaseMainSupport main) {
-
-            }
-
-            @Override
             public void afterConfigure(BaseMainSupport main) {
-
             }
 
             @Override
             public void configure(CamelContext context) {
-
             }
 
             @Override
             public void beforeStart(BaseMainSupport main) {
-
             }
 
             @Override
             public void afterStart(BaseMainSupport main) {
-
             }
 
             @Override
@@ -103,15 +108,12 @@ public class MainApp {
             }
         });
 
-        KafkaFileSetResumeStrategy resumeStrategy = getUpdatableConsumerResumeStrategyForSet();
-        RouteBuilder routeBuilder = new ClusterizedLargeDirectoryRouteBuilder(resumeStrategy);
 
-        main.configure().addRoutesBuilder(routeBuilder);
 
         main.run(args);
     }
 
-    private static KafkaFileSetResumeStrategy getUpdatableConsumerResumeStrategyForSet() {
+    private static ClusterAwareKafkaFileSetResumeStrategy getUpdatableConsumerResumeStrategyForSet(ZooKeeperClusterService zooKeeperClusterService, String nameSpace) throws Exception {
         String bootStrapAddress = System.getProperty("bootstrap.address", "localhost:9092");
         String kafkaTopic = System.getProperty("resume.type.kafka.topic", "offsets");
 
@@ -129,7 +131,8 @@ public class MainApp {
 
         MultiItemCache<File, File> cache = new MultiItemCache<>();
 
-        return new KafkaFileSetResumeStrategy(kafkaTopic, cache, producerPropertyFactory, consumerPropertyFactory);
+        return new ClusterAwareKafkaFileSetResumeStrategy(kafkaTopic, cache, producerPropertyFactory,
+                consumerPropertyFactory, zooKeeperClusterService, nameSpace);
     }
 
 }

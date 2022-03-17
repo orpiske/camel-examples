@@ -20,35 +20,36 @@ package org.apache.camel.example.resume.fileset.clusterized.strategies;
 import java.io.File;
 
 import org.apache.camel.Exchange;
-import org.apache.camel.Resumable;
-import org.apache.camel.UpdatableConsumerResumeStrategy;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.resume.Resumables;
-import org.apache.camel.component.zookeeper.cluster.ZooKeeperClusterService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ClusterizedLargeDirectoryRouteBuilder extends RouteBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(ClusterizedLargeDirectoryRouteBuilder.class);
-    private UpdatableConsumerResumeStrategy<File, File, Resumable<File, File>> testResumeStrategy;
+    private final ClusterAwareKafkaFileSetResumeStrategy testResumeStrategy;
 
-    public ClusterizedLargeDirectoryRouteBuilder(UpdatableConsumerResumeStrategy resumeStrategy) {
+    public ClusterizedLargeDirectoryRouteBuilder(ClusterAwareKafkaFileSetResumeStrategy resumeStrategy) {
         this.testResumeStrategy = resumeStrategy;
     }
 
-    private void process(Exchange exchange) throws Exception {
+    private void process(Exchange exchange) {
         File path = exchange.getMessage().getHeader("CamelFilePath", File.class);
         LOG.debug("Processing {}", path.getPath());
         exchange.getMessage().setHeader(Exchange.OFFSET, Resumables.of(path.getParentFile(), path));
 
-        // Put a dealy to simulate slow processing
-        Thread.sleep(50);
+        // Put a delay to simulate slow processing
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            LOG.warn("Interrupted while sleeping", e);
+        }
     }
 
     /**
      * Let's configure the Camel routing rules using Java code...
      */
-    public void configure() throws Exception {
+    public void configure() {
 
 
         from("timer:heartbeat?period=10000")
