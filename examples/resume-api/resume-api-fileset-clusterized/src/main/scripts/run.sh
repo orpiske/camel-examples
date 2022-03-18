@@ -23,7 +23,7 @@ fi
 sleep 10s
 
 ITERATIONS=${1:-5}
-BATCH_SIZE=${2:-50}
+BATCH_SIZE=${2:-25}
 
 for i in $(seq 0 ${ITERATIONS}) ; do
   echo "********************************************************************************"

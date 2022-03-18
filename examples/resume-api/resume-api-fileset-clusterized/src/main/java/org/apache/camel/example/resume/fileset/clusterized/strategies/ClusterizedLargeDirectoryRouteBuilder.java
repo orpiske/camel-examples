@@ -35,9 +35,9 @@ public class ClusterizedLargeDirectoryRouteBuilder extends RouteBuilder {
 
         // Put a delay to simulate slow processing
         try {
-            Thread.sleep(50);
+            Thread.sleep(100);
         } catch (InterruptedException e) {
-            LOG.warn("Interrupted while sleeping", e);
+            LOG.trace("Interrupted while sleeping", e);
         }
     }
 

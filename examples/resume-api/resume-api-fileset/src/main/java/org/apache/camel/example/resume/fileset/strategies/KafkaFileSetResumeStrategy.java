@@ -63,7 +63,6 @@ public class KafkaFileSetResumeStrategy<K, V> extends AbstractKafkaResumeStrateg
 
     @Override
     public void resume(FileResumeSet resumable) {
-        LOG.debug("RESUMING!!!! = {}", resumable);
         if (resumable != null) {
             resumable.resumeEach(this::notProcessed);
             if (resumable.hasResumables()) {

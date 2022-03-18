@@ -28,7 +28,6 @@ import org.apache.camel.example.resume.clients.kafka.FileDeserializer;
 import org.apache.camel.example.resume.clients.kafka.FileSerializer;
 import org.apache.camel.example.resume.fileset.clusterized.strategies.ClusterAwareKafkaFileSetResumeStrategy;
 import org.apache.camel.example.resume.fileset.clusterized.strategies.ClusterizedLargeDirectoryRouteBuilder;
-import org.apache.camel.example.resume.fileset.strategies.KafkaFileSetResumeStrategy;
 import org.apache.camel.example.resume.fileset.strategies.MultiItemCache;
 import org.apache.camel.main.BaseMainSupport;
 import org.apache.camel.main.Main;
@@ -68,15 +67,12 @@ public class MainApp {
                 LOG.info("Before configure");
                 try {
                     LOG.info("Starting the cluster service");
-                    clusterService.start();
                     main.getCamelContext().addService(clusterService);
 
-                    ClusterAwareKafkaFileSetResumeStrategy resumeStrategy = getUpdatableConsumerResumeStrategyForSet(clusterService, "resume-ns");
-
+                    ClusterAwareKafkaFileSetResumeStrategy resumeStrategy = getUpdatableConsumerResumeStrategyForSet();
                     main.getCamelContext().getRegistry().bind("testResumeStrategy", resumeStrategy);
 
                     RouteBuilder routeBuilder = new ClusterizedLargeDirectoryRouteBuilder();
-
                     main.getCamelContext().addRoutes(routeBuilder);
                 } catch (Exception e) {
                     LOG.error("Unable to add the cluster service: {}", e.getMessage(), e);
@@ -102,21 +98,19 @@ public class MainApp {
 
             @Override
             public void beforeStop(BaseMainSupport main) {
-
             }
 
             @Override
             public void afterStop(BaseMainSupport main) {
-
+                main.shutdown();
+                System.exit(0);
             }
         });
-
-
 
         main.run(args);
     }
 
-    private static ClusterAwareKafkaFileSetResumeStrategy getUpdatableConsumerResumeStrategyForSet(ZooKeeperClusterService zooKeeperClusterService, String nameSpace) throws Exception {
+    private static ClusterAwareKafkaFileSetResumeStrategy getUpdatableConsumerResumeStrategyForSet() {
         String bootStrapAddress = System.getProperty("bootstrap.address", "localhost:9092");
         String kafkaTopic = System.getProperty("resume.type.kafka.topic", "offsets");
 
@@ -134,7 +128,7 @@ public class MainApp {
         MultiItemCache<File, File> cache = new MultiItemCache<>();
 
         return new ClusterAwareKafkaFileSetResumeStrategy(kafkaTopic, cache, producerPropertyFactory,
-                consumerPropertyFactory, zooKeeperClusterService, nameSpace);
+                consumerPropertyFactory);
     }
 
 }
