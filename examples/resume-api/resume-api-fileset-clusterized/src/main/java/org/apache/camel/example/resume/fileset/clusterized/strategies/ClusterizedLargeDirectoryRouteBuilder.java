@@ -27,11 +27,6 @@ import org.slf4j.LoggerFactory;
 
 public class ClusterizedLargeDirectoryRouteBuilder extends RouteBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(ClusterizedLargeDirectoryRouteBuilder.class);
-    private final ClusterAwareKafkaFileSetResumeStrategy testResumeStrategy;
-
-    public ClusterizedLargeDirectoryRouteBuilder(ClusterAwareKafkaFileSetResumeStrategy resumeStrategy) {
-        this.testResumeStrategy = resumeStrategy;
-    }
 
     private void process(Exchange exchange) {
         File path = exchange.getMessage().getHeader("CamelFilePath", File.class);
@@ -50,13 +45,9 @@ public class ClusterizedLargeDirectoryRouteBuilder extends RouteBuilder {
      * Let's configure the Camel routing rules using Java code...
      */
     public void configure() {
-
-
         from("timer:heartbeat?period=10000")
                 .routeId("heartbeat")
                 .log("HeartBeat route (timer) ...");
-
-        getCamelContext().getRegistry().bind("testResumeStrategy", testResumeStrategy);
 
         from("master:resume-ns:file:{{input.dir}}?noop=true&recursive=true")
                 .resumable("testResumeStrategy")

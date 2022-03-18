@@ -72,9 +72,12 @@ public class MainApp {
                     main.getCamelContext().addService(clusterService);
 
                     ClusterAwareKafkaFileSetResumeStrategy resumeStrategy = getUpdatableConsumerResumeStrategyForSet(clusterService, "resume-ns");
-                    RouteBuilder routeBuilder = new ClusterizedLargeDirectoryRouteBuilder(resumeStrategy);
 
-                    main.configure().addRoutesBuilder(routeBuilder);
+                    main.getCamelContext().getRegistry().bind("testResumeStrategy", resumeStrategy);
+
+                    RouteBuilder routeBuilder = new ClusterizedLargeDirectoryRouteBuilder();
+
+                    main.getCamelContext().addRoutes(routeBuilder);
                 } catch (Exception e) {
                     LOG.error("Unable to add the cluster service: {}", e.getMessage(), e);
                     System.exit(1);
@@ -122,7 +125,6 @@ public class MainApp {
         consumerPropertyFactory.setKeyDeserializer(FileDeserializer.class.getName());
         consumerPropertyFactory.setValueDeserializer(FileDeserializer.class.getName());
         consumerPropertyFactory.setOffsetReset("earliest");
-        consumerPropertyFactory.setGroupId("resume-cluster");
 
         final DefaultProducerPropertyFactory producerPropertyFactory = new DefaultProducerPropertyFactory(bootStrapAddress);
 
